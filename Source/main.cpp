@@ -5,7 +5,13 @@
 
 #include "Maths.h"
 
-#define POINTS 20
+#define POINTS 200
+#define RADIUS 150
+
+bool IsPointCircumCircle(float x, float y, vec2f point)
+{
+    return sqrtf(powf(x - point.x, 2) + powf(y - point.y, 2)) <= RADIUS;
+}
 
 // Globals
 Triangle super;
@@ -107,7 +113,7 @@ std::vector<Triangle> BowyerWatson(std::vector<vec2f> points)
     return triangulation;
 }
 
-void render(sf::RenderWindow* window, std::vector<vec2f> points)
+void render(sf::RenderTexture* renderTexture, std::vector<vec2f> points)
 {
     sf::ConvexShape DrawTriangle;
     DrawTriangle.setPointCount(3);
@@ -118,12 +124,14 @@ void render(sf::RenderWindow* window, std::vector<vec2f> points)
         DrawTriangle.setPoint(0, { triangle.points[0].x, triangle.points[0].y });
         DrawTriangle.setPoint(1, { triangle.points[1].x, triangle.points[1].y });
         DrawTriangle.setPoint(2, { triangle.points[2].x, triangle.points[2].y });
-        int r = rand() % 256;
-        int g = rand() % 256;
-        int b = rand() % 256;
+        const float factor = rand() / (float)RAND_MAX;
+        int r = 50.0f * factor;
+        int g = 50.0f * factor;
+        int b = 50.0f * factor;
         DrawTriangle.setFillColor(sf::Color(r, g, b, 255));
-        window->draw(DrawTriangle);
+        renderTexture->draw(DrawTriangle);
     }
+    renderTexture->display();
 
     std::cout << "Drew: " << triangulation.size() << " triangles\n";
 }
@@ -133,29 +141,49 @@ int main()
     srand(time(0));
 
     sf::RenderWindow window({ 1280, 720 }, "Triangulation");
+    
+    sf::RenderTexture renderTexture;
+    sf::ContextSettings settings;
+    settings.antialiasingLevel = 8;
+    renderTexture.create(1920*2, 1080*2, settings);
 
     // Super triangle
     // Jednakostranicni trokut u kojemu pravokutnik iznutra predstavlja ekran, jer sve tocke moraju biti unutar super
-    float offset = 50; // jer je doljna stranica direktno na dnu ekrana malo povecanje cjelog trokuta
-    float w = window.getSize().x;
-    float h = window.getSize().y;
+    float offset = 250; // jer je doljna stranica direktno na dnu ekrana malo povecanje cjelog trokuta
+    float w = renderTexture.getSize().x;
+    float h = renderTexture.getSize().y;
     vec2f p1 = { -1 * (h / sqrtf(3)) - offset, h + offset };
-    vec2f p2 = { +1 * (h / sqrtf(3)) - offset + w, h + offset };
+    vec2f p2 = { +1 * (h / sqrtf(3)) + offset + w, h + offset };
     vec2f p3 = { w / 2, -1 * (sqrtf(3) * w * 0.5f) - offset };
     super.Initialize(p1, p2, p3);
 
     // Generate random points
-    // TODO - provjera svake tocke da unutar njenog radijusa r nema drugih tocaka, neki razmak
     std::vector<vec2f> points;
-    for (int i = 0; i < POINTS; i++)
+    points.push_back({ w / 2, h / 2 });
+    while (points.size() != POINTS)
     {
-        float x = rand() % window.getSize().x;
-        float y = rand() % window.getSize().y;
-        points.push_back({ x, y });
+        float x = rand() % renderTexture.getSize().x;
+        float y = rand() % renderTexture.getSize().y;
+
+        bool valid = true;
+        for (const auto& point : points)
+        {
+            if (IsPointCircumCircle(x, y, point))
+            {
+                valid = false;
+                break;
+            }
+        }
+
+        if (valid)
+            points.push_back({ x, y });
     }
 
     // Render only once
-    render(&window, points);
+    render(&renderTexture, points);
+    sf::Sprite spr(renderTexture.getTexture());
+    spr.setScale(1.0f / (w / window.getSize().x), 1.0f / (h / window.getSize().y)); // scale renderTexture to window by doing renderTextureRes / windowRes
+    window.draw(spr);
     window.display();
 
     // Event loop
@@ -166,6 +194,16 @@ int main()
         {
             if (e.type == sf::Event::Closed)
                 window.close();
+            else if (e.type == sf::Event::Resized)
+            {
+                window.draw(spr);
+                window.display();
+            }
+            else if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::S)
+            {
+                renderTexture.getTexture().copyToImage().saveToFile("wallpaper.png");
+                std::cout << "Saved wallpaper!\n";
+            }
         }
     }
 }
