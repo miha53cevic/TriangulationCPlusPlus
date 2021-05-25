@@ -8,25 +8,7 @@
 #include <stdio.h>
 #include <math.h>
 
-template<class T>
-struct Vector2
-{
-    Vector2()
-    {
-        this->x = 0;
-        this->y = 0;
-    }
-
-    Vector2(T x, T y)
-    {
-        this->x = x;
-        this->y = y;
-    }
-
-    T x, y;
-};
-
-typedef Vector2<float>  vec2f;
+#include "Vec2.h"
 
 enum EdgeType
 {

@@ -4,13 +4,11 @@
 #include <SFML/Graphics.hpp>
 
 #include "Maths.h"
-
-#define POINTS 200
-#define RADIUS 150
+#include "Options.h"
 
 bool IsPointCircumCircle(float x, float y, vec2f point)
 {
-    return sqrtf(powf(x - point.x, 2) + powf(y - point.y, 2)) <= RADIUS;
+    return sqrtf(powf(x - point.x, 2) + powf(y - point.y, 2)) <= Options::radius;
 }
 
 // Globals
@@ -136,16 +134,55 @@ void render(sf::RenderTexture* renderTexture, std::vector<vec2f> points)
     std::cout << "Drew: " << triangulation.size() << " triangles\n";
 }
 
+void StartupSettingInput()
+{
+    std::cout << "Use default settings? y/n" << std::endl;
+    char answer;
+    std::cin >> answer;
+    if (answer == 'y' || answer == 'Y')
+    {
+        Options::displayResolution = { 1280, 720 };
+        Options::renderResolution  = { 1920 * 2, 1080 * 2 };
+        Options::points = 200;
+        Options::radius = 150;
+    } 
+    else if (answer == 'n' || answer == 'N')
+    {
+        std::cout << "Display size x: ";
+        std::cin >> Options::displayResolution.x;
+        std::cout << "Display size y: ";
+        std::cin >> Options::displayResolution.y;
+
+        std::cout << "Render size x: ";
+        std::cin >> Options::renderResolution.x;
+        std::cout << "Render size y: ";
+        std::cin >> Options::renderResolution.y;
+
+        std::cout << "Number of Points: ";
+        std::cin >> Options::points;
+        std::cout << "Radius of distance between points: ";
+        std::cin >> Options::radius;
+    }
+    else
+    {
+        std::cout << "Invalid input!" << std::endl;
+        StartupSettingInput();
+    }
+}
+
 int main()
 {
+    // Get user settings
+    StartupSettingInput();
+
     srand(time(0));
 
-    sf::RenderWindow window({ 1280, 720 }, "Triangulation");
+    sf::RenderWindow window({ Options::displayResolution.x, Options::displayResolution.y }, "Triangulation");
     
     sf::RenderTexture renderTexture;
     sf::ContextSettings settings;
     settings.antialiasingLevel = 8;
-    renderTexture.create(1920*2, 1080*2, settings);
+    renderTexture.create(Options::renderResolution.x, Options::renderResolution.y, settings);
 
     // Super triangle
     // Jednakostranicni trokut u kojemu pravokutnik iznutra predstavlja ekran, jer sve tocke moraju biti unutar super
@@ -160,7 +197,7 @@ int main()
     // Generate random points
     std::vector<vec2f> points;
     points.push_back({ w / 2, h / 2 });
-    while (points.size() != POINTS)
+    while (points.size() != Options::points)
     {
         float x = rand() % renderTexture.getSize().x;
         float y = rand() % renderTexture.getSize().y;
